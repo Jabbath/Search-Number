@@ -45,7 +45,7 @@ def findPendant(edges, p, Gi):
 
     #Remove the edges not in GPi
     for i in range(p, len(edges)):
-        Gpi.remove_edge(edges[i])
+        Gpi.remove_edge(*edges[i])
 
     pendant = set()
 
@@ -162,7 +162,7 @@ def introduceEdge(char, j, m, edge, pendant):
 
     #Subtract edge from the pendant set
     for i in range(0, len(Knew)):
-        Knew[i] = Knew[i] - set(edge))
+        Knew[i] = Knew[i] - set(edge)
 
     #Add our new pendant set
     Knew.insert(j + 1, pendant)
@@ -187,7 +187,94 @@ def introduceEdge(char, j, m, edge, pendant):
 
     return [Inew, Knew, Anew]
 
-def compress(triple)
+def boundedBetween(start, end, sequence):
+    '''
+    Given a sequence of positive integers, checks
+    whether the values between the start and end index 
+    are bounded between those values.
+
+    INPUT
+    start: The index of the start value for the subsequence
+    end: The index of the end value for the subsequence
+    sequence: The sequence mentioned above
+
+    OUTPUT
+    bounded: True if bounded, False otherwise
+    '''
+    boundedBelow = True
+    
+    #Check if start val <= sequence[i] <= end val
+    for i in range(start + 1, end):
+        
+        if not (sequence[start] <= sequence[i] 
+        and sequence[i] <= sequence[end]):
+            boundedBelow = False
+            break
+
+    if boundedBelow:
+        bounded = True
+        return bounded
+
+    boundedAbove = True
+
+    #Check if end  val <= sequence[i] <= start val
+    for i in range(start + 1, end):
+        
+        if not (sequence[end] <= sequence[i] 
+        and sequence[i] <= sequence[start]):
+            boundedAbove = False
+            break
+
+    bounded = boundedAbove
+    return bounded
+
+def typicalSeq(sequence):
+    '''
+    Given a sequence of positive integers, outputs a
+    typical sequence as described on pg. 5 of [1].
+
+    INPUT
+    sequence: A sequence of positive integers
+
+    OUTPUT
+    typical: The typical sequence corresponding to sequence
+    '''
+    typical = sequence[:]
+    
+    #Keep reducing until the sequence no longer changes
+    changed = True
+
+    while changed:
+        changed = False
+        
+        #Check for repeats next to each other and remove
+        for i in range(0, len(typical) - 1):
+            
+            if typical[i] == typical[i + 1]:
+                changed = True
+                typical = typical[:i + 1] + typical[i + 2:]
+                break
+
+        #Check for values bounded between two others
+        for i in range(0, len(typical)):
+            foundSub = False
+
+            #Go through all the possible subsequences past i
+            for j in range(i + 2, len(typical)):
+                
+                if boundedBetween(i, j, typical):
+                    changed = True
+                    foundSub = True
+                    typical = typical[:i + 1] + typical[j:]
+                    break
+            
+            #Stop iterating if we have modified typical
+            if foundSub:
+                break
+
+    return typical
+
+def compress(triple):
     '''
     Given a typical triple, runs the compression algorithm
     on pg. 6 of [1] to remove repeated values.
@@ -198,8 +285,85 @@ def compress(triple)
     OUTPUT
     compressed: triple compressed with no repeat values
     '''
+    I = triple[0][:]
+    K = triple[1][:]
+    A = triple[2][:]
 
-#TODO: The case of a graph that is isomorphic to an edge
+    duplicates = True
+
+    #Keep checking until we have gone through all values without duplicates
+    while duplicates:
+        
+        foundDuplicate = False
+
+        for h in range(0, len(I) - 1):
+            Icurrent = I[h]
+            Inext = I[h + 1]
+            Kcurrent = K[h]
+            
+            #Check if the sets are equal and K_i+1 is empty
+            if (Icurrent.issubset(Inext) and Inext.issubset(Icurrent)
+            and len(Kcurrent) == 0):
+                foundDuplicate = True
+                
+                #Remove the duplicate entry in I and K
+                I = I[:h + 1] + I[h + 2:]
+                K = K[:h + 1] + K[h + 2:]
+
+                #Concat A_h with A_{h+1} and get the typical sequence
+                A[h] = A[h] + A[h + 1]
+                A[h] = typicalSeq(A[h])
+
+                #Remove A[h + 1]
+                A = A[:h + 1] + A[h + 2:]
+        
+        if not foundDuplicate:
+            duplicates = False
+
+    return [I, K, A]
+
+def maxSeq(seq):
+    '''
+    Given a sequence of sequence, find the maximum value in any
+    of the sequences.
+
+    INPUT
+    seq: A sequence of sequences of positive integers
+
+    OUTPUT
+    maxVal: The maximum value found
+    '''
+    maxVal = seq[0][0]
+
+    for sequence in seq:
+        for value in sequence:
+            
+            if value > maxVal:
+                maxVal = value
+
+    return maxVal
+
+def isEdge(graph):
+    '''
+    Given a graph, checks whether the graph is isomorphic to
+    an edge. That is, it has two nodes that are joined by one
+    edge.
+
+    INPUT
+    graph: A networkx graph
+
+    OUTPUT
+    edge: True if graph is an edge, False otherwise
+    '''
+    edge = False
+
+    if (len(graph.nodes()) == 2 and 
+    len(graph.edges()) == 1 and
+    graph.has_edge(graph.nodes()[0], graph.nodes()[1])):
+        edge = True
+
+    return edge
+
 def introduceNode(lastF, introduced, i, nicePath, G, k):
     '''
     Introduces a new node and calculates characteristics for it.
@@ -215,10 +379,17 @@ def introduceNode(lastF, introduced, i, nicePath, G, k):
     k: The k for which we are checking linear width
 
     OUTPUT
-    FSi: The full set of characteristics for G_i
+    FSi: The full set (in list form) of characteristics for G_i
     '''
     #Make subgraph G_i and find the edge set of our new node
     Gi = isubgraph(i, nicePath, G)
+    
+    #If our graph is an edge, return a base case full set of characteristics
+    if isEdge(Gi):
+        #The set of vertices in Gi
+        vertSet = set(Gi.nodes())
+        FSi = [vertSet, vertSet, [[0]]]
+        return FSi
 
     newVertex = list(introduced)[0]
     edges = nx.edges(Gi, newVertex)
@@ -240,17 +411,16 @@ def introduceNode(lastF, introduced, i, nicePath, G, k):
         #Go through each characteristic and make new ones
         for char in FSi:
             
+            print FSi
             I = char[0]
             A = char[2]
 
             for j in range(0, len(I)):
                 for m in range(0, len(A[j])):
-                    #TODO
                     newChar = compress(introduceEdge(char, j, m, edges[p], pendant))
                     Anew = newChar[2]
 
                     #Check if the new characteristic has lin width <= k
-                    #TODO
                     if maxSeq(Anew) <= k:
                         newFs.append(newChar)
 
@@ -258,7 +428,38 @@ def introduceNode(lastF, introduced, i, nicePath, G, k):
 
     return FSi
             
-         
+def forgetNode(lastF, forgotten, i, nicePath, G):
+    '''
+    Implements Forget-Vertex from pg. 9 of [1]. Creates
+    a new full set without the forgotten vertex.
+
+    INPUT
+    lastF: The full set of characteristics for G_{i-1}
+    introduced: A set of length 1 containing the new vertex
+    i: The current bag in the path
+    nicePath: The nice path decomposition of G
+    G: The networkx graph in question
+    k: The k for which we are checking linear width
+
+    OUTPUT
+    FSi: The full set (in list form) of characteristics for G_i
+    '''
+
+    FSi = []
+
+    for triple in lastF:
+        Inew = lastF[0][:]
+        Knew = lastF[1][:]
+        A = lastF[2][:]
+
+        #Remove the forgotten vertex from I and K
+        for i in range(0, len(Inew)):
+            Inew[i] = Inew[i].difference(forgotten)
+            Knew[i] = Knew[i].difference(forgotten)
+
+        FSi.append(compress([Inew, Knew, A]))
+
+    return FSi
 
 def checkLinearWidth(G, k):
     '''
@@ -282,7 +483,7 @@ def checkLinearWidth(G, k):
         nicePath[i] = set(nicePath[i])
     
     #Initialize our full set of characteristics
-    F = [[[],[],[]]]
+    F = [ [[[],[],[]]] ]
 
     #Compute a new full set of characteristics for each node in nicePath
     for i in range(1, len(nicePath)):
@@ -305,9 +506,10 @@ def checkLinearWidth(G, k):
 
     #Check if the last characteristic is empty
     if len(F[len(F) - 1]) == 0:
+        print 'F is: ', F
         return False
     else:
         return True
 
 G = nx.cycle_graph(4)
-checkLinearWidth(G, 5)
+print checkLinearWidth(G, 2)
