@@ -41,6 +41,8 @@ def findPendant(edges, p, Gi):
     pendant: A list of pendant vertices of G^p_i that are
     also in edges[p]
     '''
+    print '\n'
+    print 'We are looking for the pendant set of', edges, p
     Gpi = Gi.copy()
 
     #Remove the edges not in GPi
@@ -53,7 +55,7 @@ def findPendant(edges, p, Gi):
     vertices  = Gpi.nodes()
 
     for vertex in vertices:
-        if nx.degree(Gpi, vertex) == 1:
+        if nx.degree(Gpi, vertex) == 0:
             pendant.add(vertex)
 
     #Now find the ones also in edges[p]
@@ -152,7 +154,7 @@ def introduceEdge(char, j, m, edge, pendant):
     I = char[0]
     K = char[1]
     A = char[2]
-
+    print 'pendant: ', pendant
 
     Inew = I[:]
     Knew = K[:]
@@ -175,8 +177,10 @@ def introduceEdge(char, j, m, edge, pendant):
     Anew[j] = firstSeq
     Anew.insert(j + 1, secondSeq)
     
+    print 'We are about to insert with', Inew, Knew, Anew
     #Proceed to the insertion step
     for vertex in set(edge) - pendant:
+        print 'We want to insert: ', vertex
 
         for h in range(min(greatestInd(sequenceUnion(Inew, Knew), vertex), j+1),
         max(j + 1, leastInd(sequenceUnion(Inew, Knew), vertex))):
@@ -424,6 +428,9 @@ def introduceNode(lastF, introduced, i, nicePath, G, k):
 
             for j in range(0, len(I)):
                 for m in range(0, len(A[j])):
+                    print 'The characteristic is: ', char
+                    print 'We are inserting: ', edges[p], 'from', edges
+
                     newChar = compress(introduceEdge(char, j, m, edges[p], pendant))
                     Anew = newChar[2]
 
