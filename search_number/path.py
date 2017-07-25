@@ -65,7 +65,6 @@ def makeNicePathDecomp(G):
     #Convert our graph to a sage graph and compute the path decomp
     sageGraph = Graph(G)
     pathDecomp = path_decomposition(sageGraph)[1]
-    print pathDecomp
     
     usedVertices = []
     nicePath = [[]]
@@ -102,5 +101,3 @@ def makeNicePathDecomp(G):
 
     return nicePath
 
-G = nx.petersen_graph()
-print makeNicePathDecomp(G)

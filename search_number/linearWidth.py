@@ -57,7 +57,7 @@ def findPendant(edges, p, Gi):
             pendant.add(vertex)
 
     #Now find the ones also in edges[p]
-    pendant = pendant.intersection_update(set(edges[p]))
+    pendant = pendant.intersection(set(edges[p]))
 
     return pendant
     
@@ -153,6 +153,7 @@ def introduceEdge(char, j, m, edge, pendant):
     K = char[1]
     A = char[2]
 
+
     Inew = I[:]
     Knew = K[:]
     Anew = A[:]
@@ -173,14 +174,14 @@ def introduceEdge(char, j, m, edge, pendant):
 
     Anew[j] = firstSeq
     Anew.insert(j + 1, secondSeq)
-
+    
     #Proceed to the insertion step
     for vertex in set(edge) - pendant:
 
-        for h in range(min(greatestInd(sequenceUnion(Inew, Knew)), j+1),
-        max(j + 1, leastInd(sequenceUnion(Inew, Knew)))):
+        for h in range(min(greatestInd(sequenceUnion(Inew, Knew), vertex), j+1),
+        max(j + 1, leastInd(sequenceUnion(Inew, Knew), vertex))):
             Inew[h] = Inew[h].union(vertex)
-
+            
             #Increment all values in Anew at index h
             for i in range(0, Anew[h]):
                 Anew[h][i] = Anew[h][i] + 1
@@ -285,6 +286,7 @@ def compress(triple):
     OUTPUT
     compressed: triple compressed with no repeat values
     '''
+
     I = triple[0][:]
     K = triple[1][:]
     A = triple[2][:]
@@ -316,6 +318,8 @@ def compress(triple):
 
                 #Remove A[h + 1]
                 A = A[:h + 1] + A[h + 2:]
+
+                break
         
         if not foundDuplicate:
             duplicates = False
@@ -364,6 +368,8 @@ def isEdge(graph):
 
     return edge
 
+firstEdge = True
+
 def introduceNode(lastF, introduced, i, nicePath, G, k):
     '''
     Introduces a new node and calculates characteristics for it.
@@ -381,15 +387,10 @@ def introduceNode(lastF, introduced, i, nicePath, G, k):
     OUTPUT
     FSi: The full set (in list form) of characteristics for G_i
     '''
+    global firstEdge
+
     #Make subgraph G_i and find the edge set of our new node
     Gi = isubgraph(i, nicePath, G)
-    
-    #If our graph is an edge, return a base case full set of characteristics
-    if isEdge(Gi):
-        #The set of vertices in Gi
-        vertSet = set(Gi.nodes())
-        FSi = [vertSet, vertSet, [[0]]]
-        return FSi
 
     newVertex = list(introduced)[0]
     edges = nx.edges(Gi, newVertex)
@@ -403,6 +404,13 @@ def introduceNode(lastF, introduced, i, nicePath, G, k):
     FSi = lastF
 
     for p in range(0, len(edges)):
+
+        #Check if we are adding the first edge
+        if firstEdge and p == 0:
+            firstEdge = False
+            FSi = [ [ [set(edges[0])], [set(edges[0])] , [[0]] ] ]
+            continue
+
         newFS = []
 
         #Find the pendant vertices in G^p_i
@@ -411,7 +419,6 @@ def introduceNode(lastF, introduced, i, nicePath, G, k):
         #Go through each characteristic and make new ones
         for char in FSi:
             
-            print FSi
             I = char[0]
             A = char[2]
 
@@ -422,7 +429,7 @@ def introduceNode(lastF, introduced, i, nicePath, G, k):
 
                     #Check if the new characteristic has lin width <= k
                     if maxSeq(Anew) <= k:
-                        newFs.append(newChar)
+                        newFS.append(newChar)
 
         FSi = newFS
 
@@ -448,9 +455,9 @@ def forgetNode(lastF, forgotten, i, nicePath, G):
     FSi = []
 
     for triple in lastF:
-        Inew = lastF[0][:]
-        Knew = lastF[1][:]
-        A = lastF[2][:]
+        Inew = triple[0][:]
+        Knew = triple[1][:]
+        A = triple[2][:]
 
         #Remove the forgotten vertex from I and K
         for i in range(0, len(Inew)):
@@ -477,6 +484,7 @@ def checkLinearWidth(G, k):
     
     #Make a nice path decomposition of 
     nicePath = makeNicePathDecomp(G)
+    print nicePath
 
     #Convert the bags of nicePath to sets
     for i in range(0, len(nicePath)):
@@ -491,7 +499,6 @@ def checkLinearWidth(G, k):
         #Decide whether the node is introduce or forget
         introduced = nicePath[i] - nicePath[i - 1]
         forgotten = nicePath[i - 1] - nicePath[i]
-        print 'Checking node type', introduced, forgotten
 
         lastF = F[len(F) - 1]
 
@@ -506,10 +513,9 @@ def checkLinearWidth(G, k):
 
     #Check if the last characteristic is empty
     if len(F[len(F) - 1]) == 0:
-        print 'F is: ', F
         return False
     else:
         return True
 
 G = nx.cycle_graph(4)
-print checkLinearWidth(G, 2)
+print checkLinearWidth(G, 1)
